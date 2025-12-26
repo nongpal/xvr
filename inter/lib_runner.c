@@ -14,6 +14,14 @@
 #include "xvr_refstring.h"
 #include "xvr_scope.h"
 
+/**
+ * @struct Xvr_Runner
+ * @field main execution context for the xvr vm
+ * @field interpeter the internal xvr interpreter instance
+ * @field bytecode pointer to the raw instruction byte array
+ * @field size total length of the bytecode buffer
+ * @field dirty boolean flag trackin if the internal state has changed
+ */
 typedef struct Xvr_Runner {
     Xvr_Interpreter interpreter;
     const unsigned char* bytecode;

@@ -91,6 +91,26 @@ typedef enum Xvr_ASTNodeType {
     XVR_AST_NODE_IMPORT,             // import lib as alias_lib
 } Xvr_ASTNodeType;
 
+/**
+ * @brief create and attach literal AST node to the tree
+ * 
+ * function generate a leaf node representing raw value (constant)
+ * in the source code
+ * 
+ * @param nodeHandle pointer to the pointer of the target AST node
+ *                  location
+ * @param literal value data to be storing in the node
+ * 
+ * @par side effect
+ *  - allocating memory for the new AST node
+ *  - the the `Xvr_Literal` contains heap-allocated data, ownership
+ *      is typically transfered to the AST node to be freed later
+ *      during garbage collection or tree destruction.
+ * 
+ * @warning this will make sure that literal argument correct correspoinding
+ *  data type it claims to represent. passing a double value whiile type flag
+ *  is set to `STRING` result will be undefined behaviour
+ */
 void Xvr_emitASTNodeLiteral(Xvr_ASTNode** nodeHandle, Xvr_Literal literal);
 
 /**
@@ -152,6 +172,25 @@ typedef struct Xvr_NodeTernary {
     Xvr_ASTNode* elsePath;   // value is false
 } Xvr_NodeTernary;
 
+/**
+ * @brief wrapping an existing AST node into "grouping" mode
+ * 
+ * this function typically using during parsing to enforcing the
+ * precedence. it take pointer to axisting node and replace it in AST
+ * with a new parnt node of type `XVR_AST_GROUPING`
+ * 
+ * @param nodeHandle pointer to the pointer of the target AST node
+ * 
+ * @par side effect
+ *  - allocating memory for the new grouping node structure
+ *  - updating linking of the AST. original node is not freed,
+ *      but become the child of the new node
+ *  - called (or AST memory manager) remaining responsible for
+ *      freeing memory, eventually
+ * 
+ * @warning if `nodeHandle` are NULL, this function result
+ * are undefined behaviour.
+ */
 void Xvr_emitASTNodeGrouping(Xvr_ASTNode** nodeHandle);
 
 /**
@@ -165,6 +204,22 @@ typedef struct Xvr_NodeGrouping {
     Xvr_ASTNode* child;    // inner expression
 } Xvr_NodeGrouping;
 
+/**
+ * @brief wrapping existing AST into "block mode"
+ * 
+ * this function create new block node (typically represent
+ * a scope block of code, like `{ .. }`) and insert existing
+ * node as its body
+ * 
+ * @param nodeHandle pointer to the pointer of the target AST node
+ * 
+ * @par side effect
+ *  - allocate memory for the new block node structure
+ *  - modifies AST hierarchy. original node preserved as a 
+ *      descendant of the new block
+ *  - depending on the implementation this will initialize new symbol
+ *      or scope stack for the block
+ */
 void Xvr_emitASTNodeBlock(Xvr_ASTNode** nodeHandle);
 
 /**
@@ -181,6 +236,26 @@ typedef struct Xvr_NodeBlock {
     int count;             // active statements
 } Xvr_NodeBlock;
 
+/**
+ * @brief wrapping an existing AST node into a "compound" literal node
+ * 
+ * transform standard node into compound node, which typically represent
+ * complex data structure (like array, lists, strings) rather than simple
+ * scalar value
+ * 
+ * @param nodeHandle pointer to pointer of the target AST node
+ * @param literalType the specific type identifier for the compound data
+ * 
+ * @par side effect
+ *  - allocating memory for new compound node structure
+ *  - replace the referenced pointer in `nodeHandle`
+ *  - associated the provide `literalType` with the new node for type
+ *      checking and code generation
+ * 
+ * @warning the function assuming that `literalType` is valid compund type,
+ *      passing a primitive (LITERAL_INT) into compound emitter may
+ *      cause undefined behaviour
+ */
 void Xvr_emitASTNodeCompound(Xvr_ASTNode** nodeHandle,
                              Xvr_LiteralType literalType);
 
@@ -199,6 +274,27 @@ typedef struct Xvr_NodeCompound {
     int count;                    // active elements
 } Xvr_NodeCompound;
 
+/**
+ * @brief assign two child node to parent AST node
+ * 
+ * function usin to configure node as a "pair" or "binary" node
+ * by explicit setting its left and right childern.
+ * 
+ * @param node parent AST node to receive the childern
+ * @param left AST node to assign as the "left" child
+ * @param right AST node to assign as the "right" child
+ * 
+ * @par side effect
+ *  - upadting internal pointer `node` to reference `left`
+ *  - depending on the implementation, `left` and `right` may be
+ *      marked as `adopted` by the parent node
+ * 
+ * @warning if `node`, `left` or `right` are NULL, thefunction will
+ *          causing the segmentation fault
+ * @warning function does not create copies of `left` or `right`
+ *          it links them directly, modifying these nodes elsewhere
+ *          affect the tree structure
+ */
 void Xvr_setASTNodePair(Xvr_ASTNode* node, Xvr_ASTNode* left,
                         Xvr_ASTNode* right);
 
